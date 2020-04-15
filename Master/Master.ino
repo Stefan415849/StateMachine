@@ -117,26 +117,19 @@ void loop()
 {
   Serial.print(F("Choose 0 to store, 1 to compare: "));
   MODES mode = serial_input();
-  if (mode == STORE || mode == COMPARE)
+  switch (mode)
   {
-    switch (mode)
-    {
-      case 0:
-        store();
-        break;
+    case 0:
+      store();
+      break;
 
-      case 1:
-        compare();
-        break;
+    case 1:
+      compare();
+      break;
 
-      default:
-        Serial.println("Wrong mode chosen. Try again!");
-        break;
-    }
-  }
-  else
-  {
-    Serial.println(F("Wrong number!"));
-    Serial.println();
+    default:
+      Serial.println(F("Wrong mode chosen. Try again!"));
+      Serial.println();
+      break;
   }
 }
