@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include "CONSTANTS.h"
 
 void setup()
 {
@@ -9,33 +10,38 @@ void setup()
 void compare() // Print the compared values by slave
 {
   Serial.print(F("Enter slave address: "));
-  byte addr = Serial.readStringUntil('\n').toInt();
+  byte addr = serial_input();
   Serial.print(F("Enter memory register variable A: "));
-  byte val_a = Serial.readStringUntil('\n').toInt();
-  Serial.print(F("Enter value to be store: "));
-  byte val_b = Serial.readStringUntil('\n').toInt();
+  byte val_a = serial_input();
+  Serial.print(F("Enter memory register variable B: "));
+  byte val_b = serial_input();
 
   Wire.beginTransmission(addr); // Transmit to device address
-  Wire.write('C'); // Write current mode
+  Wire.write(COMPARE); // Write current mode
   Wire.write(val_a); // Variable A
   Wire.write(val_b); // Variable B
-  switch (Wire.endTransmission()) // Slave response
+  RESULTS result = Wire.endTransmission(); // Slave response
+  switch (result) // Compare response
   {
-    case 0:
+    case ACK:
       Serial.println("Data arrived succesfully!");
       break;
-    case 1:
-      Serial.println("Too much data to transmit!");
+    case OVERFLOW_NACK:
+      Serial.println("Too much data to transmit. Try again!");
       break;
-    case 2:
-      Serial.println("Address not acknowledged");
+    case ADDR_NACK:
+      Serial.println("Address not acknowledged. Try again!");
       break;
-    case 3:
-      Serial.println("Data not acknowledged");
+    case DATA_NACK:
+      Serial.println("Data not acknowledged. Try again!");
       break;
 
-    case 4:
+    case UNKNOWN_NACK:
       Serial.println("Something went wrong. Try again!");
+      break;
+
+    default:
+      Serial.println("Unknown error. Try again!");
       break;
   }
   Serial.println();
@@ -46,61 +52,91 @@ void compare() // Print the compared values by slave
   Serial.println(Wire.read());
   Serial.print("Min: ");
   Serial.println(Wire.read());
+  Serial.println();
 }
 
 void store() // Transmit values according to chosen mode
 {
   Serial.print(F("Enter slave address: "));
-  byte addr = Serial.readStringUntil('\n').toInt();
+  byte addr = serial_input();
   Serial.print(F("Enter memory register: "));
-  byte reg = Serial.readStringUntil('\n').toInt();
+  byte reg = serial_input();
   Serial.print(F("Enter value to be store: "));
-  byte val = Serial.readStringUntil('\n').toInt();
+  byte val = serial_input();
 
   Wire.beginTransmission(addr); // Transmit to device address
-  Wire.write('S'); // Write character to declare mode
-  Wire.write(reg); // Memory register for 'store' or variable A for 'compare'
-  Wire.write(val); // Value to store for 'store' or variabe B for 'compare'
-  switch (Wire.endTransmission()) // Slave response
+  Wire.write(STORE); // Write character to declare mode
+  Wire.write(reg); // Memory register address
+  Wire.write(val); // Value to store
+  RESULTS result = Wire.endTransmission(); // Slave response
+  switch (result) // Compare response
   {
-    case 0:
+    case ACK:
       Serial.println("Value stored!");
       break;
-    case 1:
+    case OVERFLOW_NACK:
       Serial.println("Too much data to transmit!");
       break;
-    case 2:
+    case ADDR_NACK:
       Serial.println("Address not acknowledged");
       break;
-    case 3:
+    case DATA_NACK:
       Serial.println("Data not acknowledged");
       break;
 
-    case 4:
+    case UNKNOWN_NACK:
       Serial.println("Something went wrong. Try again!");
+      break;
+
+    default:
+      Serial.println("Unknown error. Try again!");
       break;
   }
   Serial.println();
 }
 
+byte serial_input()
+{
+  int counter = 0;
+  uint32_t number = 0;
+  while (true)
+  {
+    byte received = Serial.read();
+    if (received == -1) continue;
+    if (received == '\n') break;
+    if (received < '0' || received > '9' || counter >= 4) continue;
+    number = number * 10 + received - '0';
+    if (number > 255) number = 255;
+    counter++;
+  }
+  Serial.println(number);
+  return number;
+}
+
 void loop()
 {
-  Serial.print(F("Choose 1 to store, 2 to compare: "));
-  while (Serial.available() == 0) {}
-  int mode = Serial.readStringUntil('\n').toInt();
-  Serial.println(mode);
-  switch (mode)
+  Serial.print(F("Choose 0 to store, 1 to compare: "));
+  MODES mode = serial_input();
+  if (mode == STORE || mode == COMPARE)
   {
-    case 1:
-      store();
-      break;
+    switch (mode)
+    {
+      case 0:
+        store();
+        break;
 
-    case 2:
-      compare();
-      break;
+      case 1:
+        compare();
+        break;
 
-    default:
-    Serial.println("Wrong mode chosen. Try again!");
-      break;
+      default:
+        Serial.println("Wrong mode chosen. Try again!");
+        break;
+    }
+  }
+  else
+  {
+    Serial.println(F("Wrong number!"));
+    Serial.println();
   }
 }
